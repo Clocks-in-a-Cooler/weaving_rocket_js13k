@@ -1,3 +1,10 @@
+// entities and particles are in objects.js
+
+/*
+    for asteroid density, 0.05 is very few asteroids, 0.2 is a lot and almost impossible to dodge
+*/
+var asteroid_density = 0.05;
+
 function reset() {
     // clear everything
     entities = [];
@@ -19,8 +26,8 @@ function update(lapse) {
     particles = particles.filter(p => p.lifetime > 0);
     particles.forEach(p => p.update(lapse));
 
-    if (Math.random() < 0.167) {
-        entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), "white"));
+    if (Math.random() < asteroid_density) {
+        entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), new Colour(255, 255, 255)));
     }
 }
 

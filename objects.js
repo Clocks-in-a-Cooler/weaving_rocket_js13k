@@ -1,5 +1,28 @@
 // had all this code lying around. might as well put it to good use
 
+class Colour {
+    /**
+     * @param { number } r 
+     * @param { number } g 
+     * @param { number } b 
+     * @param { number } a (defaults to 1, full opacity, if no alpha is specified)
+     */
+    constructor(r, g, b, a = 1) {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
+    }
+
+    to_string() {
+        return `rgba(${ this.r }, ${ this.g }, ${ this.b }, ${ this.a })`;
+    }
+
+    clone() {
+        return new Colour(this.r, this.g, this.b, this.a);
+    }
+}
+
 class Vector {
     /**
      * @param {Number} x 
@@ -68,6 +91,10 @@ class Line {
 
     get length() {
         return this.end.subtract(this.start).length;
+    }
+
+    get midpoint() {
+        return new Vector((this.start.x + this.end.x) / 2, (this.start.y + this.end.y)  / 2);
     }
 
     /**
@@ -152,31 +179,36 @@ class Line {
     }
 }
 
-const LINE_PARTICLE_MOVE_SPEED = 0.1;
-class Line_particle {
+const LINE_PARTICLE_MOVE_SPEED   = 0.03;
+const LINE_PARTICLE_ROTATE_SPEED = Math.PI / 6000; // up to 30 degrees per second, which is PI / 6 radians per second, which in turn is PI / 6000 radians per second
+const LINE_PARTICLE_MAX_LIFETIME = 750; // milliseconds
+
+class Line_particle extends Line {
     /**
      * @param { Line } line
-     * @param { string } colour
+     * @param { Colour } colour
      */
     constructor(line, colour) {
-        this.line   = line;
-        this.colour = colour;
-        this.angle  = 0;
+        super(line.start, line.end);
+        this.colour = colour.clone();
         this.motion = new Vector(Math.random() * LINE_PARTICLE_MOVE_SPEED, Math.random() * LINE_PARTICLE_MOVE_SPEED);
 
+        this.rotation  = (Math.random() < 0.5 ? -1 : 1) * Math.random() * LINE_PARTICLE_ROTATE_SPEED;
         this.motion.x *= Math.random() < 0.5 ? -1 : 1;
         this.motion.y *= Math.random() < 0.5 ? -1 : 1;
 
-        this.lifetime = 750;
+        this.lifetime = LINE_PARTICLE_MAX_LIFETIME;
     }
 
     /**
      * @param { number } lapse 
      */
     update(lapse) {
-        this.line.start = this.line.start.add(this.motion.multiply(lapse));
-        this.line.end   = this.line.end.add(this.motion.multiply(lapse));
-        this.lifetime  -= lapse;
+        var new_line   = this.rotate(this.midpoint, this.rotation * lapse).translate(this.motion.multiply(lapse));
+        this.start     = new_line.start;
+        this.end       = new_line.end;
+        this.lifetime -= lapse;
+        this.colour.a  = this.lifetime / LINE_PARTICLE_MAX_LIFETIME;
     }
 }
 
@@ -192,7 +224,7 @@ class Entity {
         this.lines    = lines;
         this.health   = 1;
         this.active   = true;
-        this.colour   = "white";
+        this.colour   = new Colour(255, 255, 255);
     }
 
     get_lines() {
@@ -278,7 +310,7 @@ class Asteroid extends Entity {
      * each asteroid is a regular polygon.
      * @param { number } x 
      * @param { number } size the number of sides. the more sides, the larger the polygon
-     * @param { string } colour 
+     * @param { Colour } colour 
      */
     constructor(x, size, colour) {
         var position = new Vector(x, -100);
@@ -327,7 +359,7 @@ class Rocket extends Entity {
     constructor() {
         var position = new Vector(canvas_size / 2, canvas_size - 50);
         super(position, ROCKET_LINES, 0);
-        this.colour        = "greenyellow";
+        this.colour        = new Colour(173, 255, 47);
         this.invincibility = 5000;
         this.direction     = "left";
     }
@@ -348,7 +380,6 @@ class Rocket extends Entity {
                     this.direction = "right";
                     break;
             }
-            console.log(`now going ${ this.direction }.`);
             space_bar = KEY_SEEN;
         }
 
@@ -372,6 +403,9 @@ class Rocket extends Entity {
             if (entity === this) return;
             if (entity.collision(this)) {
                 entity.shatter();
+                this.shatter();
+                this.active        = true;
+                this.invincibility = 2000;
             }
         });
     }
