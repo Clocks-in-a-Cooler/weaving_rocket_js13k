@@ -71,6 +71,17 @@ class Line {
     }
 
     /**
+     * 
+     * @param { number } start_x 
+     * @param { number } start_y 
+     * @param { number } end_x 
+     * @param { number } end_y 
+     */
+    static create_line(start_x, start_y, end_x, end_y) {
+        return new Line(new Vector(start_x, start_y), new Vector(end_x, end_y));
+    }
+
+    /**
      * @param {Vector} displacement
      */
     translate(displacement) {
@@ -141,6 +152,34 @@ class Line {
     }
 }
 
+const LINE_PARTICLE_MOVE_SPEED = 0.1;
+class Line_particle {
+    /**
+     * @param { Line } line
+     * @param { string } colour
+     */
+    constructor(line, colour) {
+        this.line   = line;
+        this.colour = colour;
+        this.angle  = 0;
+        this.motion = new Vector(Math.random() * LINE_PARTICLE_MOVE_SPEED, Math.random() * LINE_PARTICLE_MOVE_SPEED);
+
+        this.motion.x *= Math.random() < 0.5 ? -1 : 1;
+        this.motion.y *= Math.random() < 0.5 ? -1 : 1;
+
+        this.lifetime = 750;
+    }
+
+    /**
+     * @param { number } lapse 
+     */
+    update(lapse) {
+        this.line.start = this.line.start.add(this.motion.multiply(lapse));
+        this.line.end   = this.line.end.add(this.motion.multiply(lapse));
+        this.lifetime  -= lapse;
+    }
+}
+
 class Entity {
     /**
      * @param {Vector} position the center of the entity
@@ -183,6 +222,9 @@ class Entity {
      * @returns {Vector[]} an array of points where intersection occurs. if there is no intersection, `null` is returned
      */
     collision(other) {
+        /**
+         * @type { Vector }
+         */
         var intersection_points = [];
         this.get_lines().forEach((this_line) => {
             other.get_lines().forEach((other_line) => {
@@ -199,17 +241,37 @@ class Entity {
     /**
      * 
      * @param { number } lapse 
+     * @param { Entity[] } entities
      */
-    update(lapse) {
+    update(lapse, entities) {
         // override
     }
+
+    shatter() {
+        // break apart those lines, and fall apart
+        this.get_lines().forEach(line => {
+            particles.push(new Line_particle(line, this.colour));
+        });
+
+        this.active = false;
+    }
 }
+
+/**
+ * @type { Entity[] }
+ */
+var entities = [];
+
+/**
+ * @type { Line_particle[] }
+ */
+var particles = [];
 
 // objects that you'll actually see in the game
 
 const ASTEROID_SIDE_LENGTH = 20;
 
-var asteroid_move_speed     = 0.4;
+var asteroid_move_speed     = 0.2;
 var asteroid_rotation_speed = 0.001;
 class Asteroid extends Entity {
     /**
@@ -219,7 +281,7 @@ class Asteroid extends Entity {
      * @param { string } colour 
      */
     constructor(x, size, colour) {
-        var position = new Vector(x, 0);
+        var position = new Vector(x, -100);
         var lines    = [];
 
         var center_angle = Math.PI * 2 / size;
@@ -234,14 +296,83 @@ class Asteroid extends Entity {
 
         super(position, lines, 0);
         this.colour = colour;
+        this.speed  = Math.random() * 0.1 + asteroid_move_speed;
+
+        this.rotate_direction = Math.random() < 0.5 ? -1 : 1;
     }
 
     /**
      * @param { number } lapse 
+     * @param { Entity[] } entities
      */
-    update(lapse) {
-        this.position.y += lapse * asteroid_move_speed;
-        this.angle      += lapse * asteroid_rotation_speed;
-        this.active      = (this.position.y - 100) < canvas_size;
+    update(lapse, entities) {
+        this.position.y += lapse * this.speed;
+        this.angle      += lapse * asteroid_rotation_speed * this.rotate_direction;
+        this.active      = this.active && (this.position.y - 100) < canvas_size;
+    }
+}
+
+
+const ROCKET_LINES = [
+    new Line(new Vector(0, -30), new Vector(15, 30)),
+    new Line(new Vector(15, 30), new Vector(0, 15)),
+    new Line(new Vector(0, 15), new Vector(-15, 30)),
+    new Line(new Vector(-15, 30), new Vector(0, -30))
+];
+
+const ROCKET_MOVE_SPEED = 0.3;
+const ROCKET_LEAN_ANGLE = Math.PI / 6;
+
+class Rocket extends Entity {
+    constructor() {
+        var position = new Vector(canvas_size / 2, canvas_size - 50);
+        super(position, ROCKET_LINES, 0);
+        this.colour        = "greenyellow";
+        this.invincibility = 5000;
+        this.direction     = "left";
+    }
+
+    /**
+     * @param { number } lapse 
+     * @param { Entity[] } entities
+     */
+    update(lapse, entities) {
+        this.invincibility = this.invincibility <= 0 ? 0 : (this.invincibility - lapse);
+
+        if (space_bar & KEY_PRESSED) {
+            switch (this.direction) {
+                case "right":
+                    this.direction = "left";
+                    break;
+                case "left":
+                    this.direction = "right";
+                    break;
+            }
+            console.log(`now going ${ this.direction }.`);
+            space_bar = KEY_SEEN;
+        }
+
+        if (space_bar) {
+            switch (this.direction) {
+                case "right":
+                    this.position.x += ROCKET_MOVE_SPEED * lapse;
+                    this.angle       = ROCKET_LEAN_ANGLE;
+                    break;
+                case "left":
+                    this.position.x -= ROCKET_MOVE_SPEED * lapse;
+                    this.angle       = -ROCKET_LEAN_ANGLE;
+                    break;
+            }
+            this.position.x = Math.max(30, Math.min(this.position.x, canvas_size - 30));
+        } else {
+            this.angle = 0;
+        }
+
+        entities.forEach(entity => {
+            if (entity === this) return;
+            if (entity.collision(this)) {
+                entity.shatter();
+            }
+        });
     }
 }
