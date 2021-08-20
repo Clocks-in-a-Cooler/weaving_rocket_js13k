@@ -7,18 +7,34 @@ var asteroid_density = 0.05;
 
 function reset() {
     // clear everything
-    entities = [];
+    entities   = [];
+    game_state = "menu";
 }
 
 function start() {
     // give the player a new rocket
-    entities.push(new Rocket());
+    player = new Rocket();
+    entities.push(player);
+
+    game_state = "playing";
 }
 
 /**
  * @param { number } lapse 
  */
 function update(lapse) {
+    // detect if the space bar is pressed
+    if (space_bar & KEY_PRESSED) {
+        if (game_state == "game over") {
+            reset();
+            space_bar = KEY_SEEN;
+        }
+        if (game_state == "menu") {
+            start();
+            space_bar = KEY_SEEN;
+        }
+    }
+
     // update everything as usual
     entities = entities.filter(e => e.active);
     entities.forEach(e => e.update(lapse, entities));
@@ -41,5 +57,4 @@ function animate(time) {
     requestAnimationFrame(animate);
 }
 
-start();
 requestAnimationFrame(animate);

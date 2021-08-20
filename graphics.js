@@ -23,6 +23,47 @@ class Sprite {
 
 /**
  * 
+ * @param { CanvasRenderingContext2D } context 
+ * @param { string } text 
+ * @param { number } x 
+ * @param { number } y 
+ * @param { string } background_colour 
+ * @param { string } text_colour 
+ */
+function fill_text_with_background(context, text, x, y, padding, background_colour, text_colour) {
+    var text_metrics = context.measureText(text);
+    var draw_x       = 0;
+    var draw_y       = 0;
+    switch (context.textAlign) {
+        // going to assume English, unless i learn some more languages. human languages, not programmming languages
+        case "start":
+        case "left":
+            draw_x = x;
+            break;
+        case "center":
+            draw_x = x - text_metrics.width / 2;
+            break;
+        case "right":
+        case "end":
+            draw_x = x - text_metrics.width;
+            break;
+    }
+    draw_x = draw_x - padding;
+    draw_y = y - text_metrics.actualBoundingBoxAscent - padding;
+
+    var draw_width  = text_metrics.width + 2 * padding;
+    var draw_height = text_metrics.actualBoundingBoxAscent + text_metrics.actualBoundingBoxDescent + 2 * padding;
+
+    context.save();
+    context.fillStyle = background_colour;
+    context.fillRect(draw_x, draw_y, draw_width, draw_height);
+    context.fillStyle = text_colour;
+    context.fillText(text, x, y);
+    context.restore();
+}
+
+/**
+ * 
  * @param { Entity[] } objects 
  * @param { Line_particle[] } particles
  * @param { CanvasRenderingContext2D } context 
@@ -88,4 +129,27 @@ function draw(objects, particles, context) {
         context.closePath();
         context.stroke();
     });
+
+    switch (game_state) {
+        case "menu":
+            context.font      = "30px sans-serif";
+            context.textAlign = "center";
+            fill_text_with_background(context, "weaving rocket", canvas_size / 2, canvas_size / 2, 3, "black", "white");
+            if (frames % 60 < 30) {
+                context.font = "15px sans-serif";
+                fill_text_with_background(context, "press SPACE to start", canvas_size / 2, canvas_size / 2 + 40, "black", "white");
+            }
+            break;
+        case "game over":
+            context.font      = "30px sans-serif";
+            context.textAlign = "center";
+            fill_text_with_background(context, "GAME OVER", canvas_size / 2, canvas_size / 2, 3, "black", "white");
+            if (frames % 60 < 30) {
+                context.font = "15px sans-serif";
+                fill_text_with_background(context, "press SPACE to restart", canvas_size / 2, canvas_size / 2 + 40, "black", "white");
+            }
+            break;
+    }
+
+    frames++;
 }

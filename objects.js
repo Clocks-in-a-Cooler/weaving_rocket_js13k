@@ -354,6 +354,8 @@ const ROCKET_LINES = [
 
 const ROCKET_MOVE_SPEED = 0.3;
 const ROCKET_LEAN_ANGLE = Math.PI / 6;
+const ROCKET_ACCELERATION = 0.0005;
+const ROCKET_FRICTION     = 0.0015;
 
 class Rocket extends Entity {
     constructor() {
@@ -362,6 +364,7 @@ class Rocket extends Entity {
         this.colour        = new Colour(173, 255, 47);
         this.invincibility = 5000;
         this.direction     = "left";
+        this.x_speed       = 0;
     }
 
     /**
@@ -386,18 +389,17 @@ class Rocket extends Entity {
         if (space_bar) {
             switch (this.direction) {
                 case "right":
-                    this.position.x += ROCKET_MOVE_SPEED * lapse;
-                    this.angle       = ROCKET_LEAN_ANGLE;
+                    this.x_speed    += ROCKET_ACCELERATION * lapse;
                     break;
                 case "left":
-                    this.position.x -= ROCKET_MOVE_SPEED * lapse;
-                    this.angle       = -ROCKET_LEAN_ANGLE;
+                    this.x_speed    -= ROCKET_ACCELERATION * lapse;
                     break;
             }
-            this.position.x = Math.max(30, Math.min(this.position.x, canvas_size - 30));
-        } else {
-            this.angle = 0;
         }
+        this.position.x += this.x_speed * lapse;
+        this.angle       = ROCKET_LEAN_ANGLE * this.x_speed / ROCKET_MOVE_SPEED;
+        this.x_speed    -= this.x_speed * lapse * ROCKET_FRICTION;
+        this.position.x  = Math.max(30, Math.min(this.position.x, canvas_size - 30));
 
         entities.forEach(entity => {
             if (entity === this) return;
