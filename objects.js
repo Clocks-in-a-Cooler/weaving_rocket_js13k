@@ -365,6 +365,7 @@ class Rocket extends Entity {
         this.invincibility = 5000;
         this.direction     = "left";
         this.x_speed       = 0;
+        this.health        = 5;
     }
 
     /**
@@ -408,7 +409,17 @@ class Rocket extends Entity {
                 this.shatter();
                 this.active        = true;
                 this.invincibility = 2000;
+                this.health--;
             }
         });
+
+        if (this.health <= 0) {
+            this.active = false;
+            game_state  = "game over";
+
+            if (score > high_score) {
+                high_score = score;
+            }
+        }
     }
 }

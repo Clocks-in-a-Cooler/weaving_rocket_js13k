@@ -130,14 +130,18 @@ function draw(objects, particles, context) {
         context.stroke();
     });
 
+    context.save();
+
     switch (game_state) {
         case "menu":
             context.font      = "30px sans-serif";
             context.textAlign = "center";
             fill_text_with_background(context, "weaving rocket", canvas_size / 2, canvas_size / 2, 3, "black", "white");
+            context.font = "15px sans-serif";
+            fill_text_with_background(context, "use the SPACE BAR to weave in between the asteroids", canvas_size / 2, canvas_size / 2 + 40, "black", "white");
             if (frames % 60 < 30) {
                 context.font = "15px sans-serif";
-                fill_text_with_background(context, "press SPACE to start", canvas_size / 2, canvas_size / 2 + 40, "black", "white");
+                fill_text_with_background(context, "press SPACE to start", canvas_size / 2, canvas_size / 2 + 80, "black", "white");
             }
             break;
         case "game over":
@@ -149,7 +153,19 @@ function draw(objects, particles, context) {
                 fill_text_with_background(context, "press SPACE to restart", canvas_size / 2, canvas_size / 2 + 40, "black", "white");
             }
             break;
+        case "playing":
+            if (player == null) break;
+            context.font         = "25px sans-serif";
+            context.textAlign    = "left";
+            context.textBaseline = "top";
+            fill_text_with_background(context, `health: ${ player.health }`, 3, 3, 5, "black", "white");
+            fill_text_with_background(context, `score: ${ score }`, 3, 41, 5, "black", "white");
+            if (high_score) {
+                fill_text_with_background(context, `best: ${ high_score }`, 3, 79, 5, "black", "white");
+            }
     }
+
+    context.restore();
 
     frames++;
 }

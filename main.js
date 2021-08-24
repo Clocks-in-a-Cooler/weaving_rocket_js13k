@@ -9,6 +9,8 @@ function reset() {
     // clear everything
     entities   = [];
     game_state = "menu";
+    player     = null;
+    score      = 0;
 }
 
 function start() {
@@ -17,6 +19,7 @@ function start() {
     entities.push(player);
 
     game_state = "playing";
+    frames     = 0;
 }
 
 /**
@@ -25,12 +28,12 @@ function start() {
 function update(lapse) {
     // detect if the space bar is pressed
     if (space_bar & KEY_PRESSED) {
-        if (game_state == "game over") {
-            reset();
-            space_bar = KEY_SEEN;
-        }
         if (game_state == "menu") {
             start();
+            space_bar = KEY_SEEN;
+        }
+        if (game_state == "game over") {
+            reset();
             space_bar = KEY_SEEN;
         }
     }
@@ -44,6 +47,10 @@ function update(lapse) {
 
     if (Math.random() < asteroid_density) {
         entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), new Colour(255, 255, 255)));
+    }
+
+    if (game_state == "playing" && (frames % 60) == 0) {
+        score++;
     }
 }
 
