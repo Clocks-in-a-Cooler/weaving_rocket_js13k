@@ -113,6 +113,8 @@ function draw(objects, particles, context) {
             }
         }
         context.beginPath();
+        context.shadowColor = obj.colour.to_string();
+        context.shadowBlur = 80;
         obj.get_lines().forEach(line => {
             context.moveTo(line.start.x, line.start.y);
             context.lineTo(line.end.x, line.end.y);

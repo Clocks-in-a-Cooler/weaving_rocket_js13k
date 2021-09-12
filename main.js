@@ -4,6 +4,7 @@
     for asteroid density, 0.05 is very few asteroids, 0.2 is a lot and almost impossible to dodge
 */
 var asteroid_density = 0.05;
+var powerup_chance = 0.0015;
 
 function reset() {
     // clear everything
@@ -46,7 +47,16 @@ function update(lapse) {
     particles.forEach(p => p.update(lapse));
 
     if (Math.random() < asteroid_density) {
-        entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), new Colour(255, 255, 255)));
+        entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), new Colour(255, 255, 255)));   
+    }
+
+    if (Math.random() < powerup_chance) {
+        entities.push(new Powerup(Math.random() * canvas_size, ["shield", "gun", "totem"][Math.floor(Math.random() * 3)], new Colour(255, 0, 0)));
+    }
+
+    if (fire_gun) {
+        entities.push(new Bullet());
+        fire_gun = !fire_gun;
     }
 
     if (game_state == "playing" && (frames % 60) == 0) {

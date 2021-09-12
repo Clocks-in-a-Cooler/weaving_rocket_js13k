@@ -18,8 +18,14 @@ class Colour {
         return `rgba(${ this.r }, ${ this.g }, ${ this.b }, ${ this.a })`;
     }
 
-    clone() {
-        return new Colour(this.r, this.g, this.b, this.a);
+    /**
+     * @param {Number} r_shift - amount to change red by
+     * @param {Number} g_shift - amount to change green by
+     * @param {Number} b_shift - amount to change blue by
+     * @param {Number} a_shift - amount to change alpha by
+     */
+    clone(r_shift = 0, g_shift = 0, b_shift = 0, a_shift = 0) {
+        return new Colour(this.r+r_shift, this.g+g_shift, this.b+b_shift, this.a+a_shift);
     }
 }
 
@@ -217,14 +223,16 @@ class Entity {
      * @param {Vector} position the center of the entity
      * @param {Line[]} lines the outline of the entity, relative to the center (`position`). used for collision detection. does not need to be closed
      * @param {Number?} angle the angle, where 0 is facing directly to the right. if no angle is supplied, defaults to 0
+     * @param {String} type - the type of entity, needed to figure out whether the rocket should break on an asteroid or be boosted by a powerup
      */
-    constructor(position, lines, angle) {
+    constructor(position, lines, angle, type) {
         this.position = position;
         this.angle    = isNaN(angle) ? 0 : angle;
         this.lines    = lines;
         this.health   = 1;
         this.active   = true;
         this.colour   = new Colour(255, 255, 255);
+        this.type = type;
     }
 
     get_lines() {
@@ -232,6 +240,14 @@ class Entity {
         return this.lines.map(line => {
             return line.translate(center).rotate(center, angle);
         });
+    }
+
+    get_position() {
+        return this.position;
+    }
+
+    get_type() {
+        return this.type;
     }
 
     /**
@@ -326,7 +342,7 @@ class Asteroid extends Entity {
             lines.push(new Line(start, end));
         }
 
-        super(position, lines, 0);
+        super(position, lines, 0, "asteroid");
         this.colour = colour;
         this.speed  = Math.random() * 0.1 + asteroid_move_speed;
 
@@ -357,15 +373,49 @@ const ROCKET_LEAN_ANGLE = Math.PI / 6;
 const ROCKET_ACCELERATION = 0.0005;
 const ROCKET_FRICTION     = 0.0015;
 
+var rocket_shield = 0;
+var rocket_gun = 0;
+var fire_gun = false;
+var rocket_totem = true;
+
 class Rocket extends Entity {
     constructor() {
         var position = new Vector(canvas_size / 2, canvas_size - 50);
-        super(position, ROCKET_LINES, 0);
+        super(position, ROCKET_LINES, 0, "rocket");
         this.colour        = new Colour(173, 255, 47);
-        this.invincibility = 5000;
+        this.invincibility = 3000;
         this.direction     = "left";
         this.x_speed       = 0;
         this.health        = 5;
+    }
+
+    /**
+     * @param {String} type of powerup to receive
+     */
+    receive_powerup(power_type) {
+        switch(power_type) {
+            case "shield":
+                rocket_shield = 6000;
+                this.set_colour(new Colour(255,255,255));
+                break;
+            case "gun":
+                rocket_gun = 8000;
+                break;
+            case "totem":
+                rocket_totem = true;
+                break;
+        }
+    }
+
+    get_colour() {
+        return this.colour;
+    }
+
+    /**
+     * @param {Colour} new colour to set rocket to
+     */ 
+    set_colour(new_colour) {
+        this.colour = new_colour;
     }
 
     /**
@@ -374,8 +424,11 @@ class Rocket extends Entity {
      */
     update(lapse, entities) {
         this.invincibility = this.invincibility <= 0 ? 0 : (this.invincibility - lapse);
+        rocket_shield = rocket_shield <= 0 ? 0 : (rocket_shield - lapse);
+        rocket_gun = rocket_gun <= 0 ? 0 : (rocket_gun - lapse);
 
         if (space_bar & KEY_PRESSED) {
+            zzfx(...[,,22,.08,.4,0,2,.29,-0.3,,,,.02,,,.2,,.4,.05]); //zzfx engine
             switch (this.direction) {
                 case "right":
                     this.direction = "left";
@@ -405,15 +458,50 @@ class Rocket extends Entity {
         entities.forEach(entity => {
             if (entity === this) return;
             if (entity.collision(this)) {
-                entity.shatter();
-                this.shatter();
-                this.active        = true;
-                this.invincibility = 2000;
-                this.health--;
+                if (entity.get_type() == "asteroid") {
+                    entity.shatter();
+                    if (this.invincibility <= 0 && rocket_shield <= 0) {
+                        this.shatter();
+                        this.health--;
+                        this.active        = true;
+                        this.invincibility = 1000;
+                    }
+
+                    if (rocket_shield <= 0) {
+                        zzfx(...[1.99,,212,.13,.04,.09,3,2.36,,,,,,,-95,,.44,.35,.01]); //zzfx asteroid
+                    } else {
+                        zzfx(...[1.58,,65.40639,.21,.07,.13,,1.95,-0.2,4,,,,2,,.4,.1,.82,.05,.02]); //zzfx shield
+                    }
+                    
+                } else if (entity.get_type() == "powerup") {
+                    entity.shatter();
+                    zzfx(...[1.1,,246.9417,.03,.36,.92,,1.25,.2,-0.5,-290,.1,.1,,,,,.88,.07]); //zzfx powerup
+                    this.receive_powerup(entity.get_power_type());
+                } else if (entity.get_type() == "bullet") {
+                    return;
+                }
             }
         });
 
+        if (Math.round(rocket_shield) % 100 == 0 && rocket_shield > 0) {
+            this.set_colour(this.get_colour().clone(-5,-5,-5));
+        } else if (rocket_shield <= 0) {
+            this.set_colour(new Colour(173, 255, 47));
+        }
+
+        if (Math.round(rocket_gun) % 100 == 0 && rocket_gun > 0) {
+            fire_gun = true;
+            zzfx(...[.5,,247,.02,.07,.03,1,.26,-7.9,-0.1,,,,.6,,.4,,.71,.02,.4]); //zzfx shoot
+        }
+
         if (this.health <= 0) {
+            if (rocket_totem) {
+                this.health = 1;
+                rocket_totem = false;
+                this.invincibility = 2000;
+                zzfx(...[2.5,0,261.6256,,.85,.14,2,1.57,,,,,.38,.3,,,.18,.76,.16,.25]); //zzfx totem
+                return;
+            }
             this.active = false;
             game_state  = "game over";
 
@@ -421,5 +509,82 @@ class Rocket extends Entity {
                 high_score = score;
             }
         }
+    }
+}
+
+class Powerup extends Entity {
+    /**
+     * each powerup is similar to an asteroid, but with its own characteristics
+     * @param {number} x coordinate
+     * @param {String} power_type what kind of power it will grant the player
+     * @param {Colour} colour
+     */
+    constructor(x, power_type, colour) {
+        var tri_sides = 3;
+        var position = new Vector(x, -100);
+        var center_angle = Math.PI  * 2 / tri_sides;
+        var radius = 20;
+        var lines = [];
+        for (var i = 0; i < tri_sides; ++i) {
+            var angle = i * center_angle;
+            var start = new Vector(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            var end   = new Vector(Math.cos(angle + center_angle) * radius, Math.sin(angle + center_angle) * radius);
+            lines.push(new Line(start, end));
+        }
+        super(position, lines, 0, "powerup");
+        this.power_type = power_type;
+        this.colour = colour;
+        this.speed  = (Math.random() * 0.1 + asteroid_move_speed) * 1.6;
+
+        this.rotate_direction = -1;
+    }
+
+    get_power_type() {
+        return this.power_type;
+    }
+
+    update(lapse, entities) {
+        this.position.y += lapse * this.speed;
+        this.angle      += lapse * (asteroid_rotation_speed * 25) * this.rotate_direction;
+        this.active      = this.active && (this.position.y - 100) < canvas_size;
+    }
+}
+
+class Bullet extends Entity {
+    /**
+     * stripped down asteroid lol
+     */
+    constructor () {
+        var rocket = entities.filter(entity => entity.constructor == Rocket)[0];
+        var circle_sides = 30;
+        var position = rocket.get_position().add(new Vector(0,-60));
+        var center_angle = Math.PI  * 2 / circle_sides;
+        var radius = 7.5;
+        var lines = [];
+        for (var i = 0; i < circle_sides; ++i) {
+            var angle = i * center_angle;
+            var start = new Vector(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            var end   = new Vector(Math.cos(angle + center_angle) * radius, Math.sin(angle + center_angle) * radius);
+            lines.push(new Line(start, end));
+        }
+        super(position, lines, 0, "bullet");
+        this.colour = new Colour(27, 181, 89);
+        this.speed = (Math.random() * 0.1 + asteroid_move_speed) * 0.1;
+        this.rotation_direction = 1;
+    }
+
+    update(lapse, entities) {
+        this.position.y -= lapse * this.speed; //going up
+        this.angle      += lapse * (asteroid_rotation_speed * 1.5) * this.rotate_direction;
+        this.active      = this.active && (this.position.y - 100) > canvas_size;
+        entities.forEach(entity => {
+            if (entity === this) return;
+            if (entity.collision(this)) {
+                if (entity.get_type() == "asteroid") {
+                    entity.shatter();
+                    this.shatter();
+                }
+            }
+        });
     }
 }
