@@ -223,16 +223,14 @@ class Entity {
      * @param {Vector} position the center of the entity
      * @param {Line[]} lines the outline of the entity, relative to the center (`position`). used for collision detection. does not need to be closed
      * @param {Number?} angle the angle, where 0 is facing directly to the right. if no angle is supplied, defaults to 0
-     * @param {String} type - the type of entity, needed to figure out whether the rocket should break on an asteroid or be boosted by a powerup
      */
-    constructor(position, lines, angle, type) {
+    constructor(position, lines, angle) {
         this.position = position;
         this.angle    = isNaN(angle) ? 0 : angle;
         this.lines    = lines;
         this.health   = 1;
         this.active   = true;
         this.colour   = new Colour(255, 255, 255);
-        this.type = type;
     }
 
     get_lines() {
@@ -245,11 +243,6 @@ class Entity {
     get_position() {
         return this.position;
     }
-
-    get_type() {
-        return this.type;
-    }
-
     /**
      * creates an entity.
      * @param {Vector} center 
@@ -342,7 +335,7 @@ class Asteroid extends Entity {
             lines.push(new Line(start, end));
         }
 
-        super(position, lines, 0, "asteroid");
+        super(position, lines, 0);
         this.colour = colour;
         this.speed  = Math.random() * 0.1 + asteroid_move_speed;
 
@@ -376,17 +369,18 @@ const ROCKET_FRICTION     = 0.0015;
 var rocket_shield = 0;
 var rocket_gun = 0;
 var fire_gun = false;
-var rocket_totem = true;
+var rocket_totem = false;
 
 class Rocket extends Entity {
     constructor() {
         var position = new Vector(canvas_size / 2, canvas_size - 50);
-        super(position, ROCKET_LINES, 0, "rocket");
+        super(position, ROCKET_LINES, 0);
         this.colour        = new Colour(173, 255, 47);
         this.invincibility = 3000;
         this.direction     = "left";
         this.x_speed       = 0;
         this.health        = 5;
+        rocket_gun = 50000;
     }
 
     /**
@@ -458,7 +452,7 @@ class Rocket extends Entity {
         entities.forEach(entity => {
             if (entity === this) return;
             if (entity.collision(this)) {
-                if (entity.get_type() == "asteroid") {
+                if (entity.constructor == Asteroid) {
                     entity.shatter();
                     if (this.invincibility <= 0 && rocket_shield <= 0) {
                         this.shatter();
@@ -473,12 +467,10 @@ class Rocket extends Entity {
                         zzfx(...[1.58,,65.40639,.21,.07,.13,,1.95,-0.2,4,,,,2,,.4,.1,.82,.05,.02]); //zzfx shield
                     }
                     
-                } else if (entity.get_type() == "powerup") {
+                } else if (entity.constructor == Powerup) {
                     entity.shatter();
                     zzfx(...[1.1,,246.9417,.03,.36,.92,,1.25,.2,-0.5,-290,.1,.1,,,,,.88,.07]); //zzfx powerup
                     this.receive_powerup(entity.get_power_type());
-                } else if (entity.get_type() == "bullet") {
-                    return;
                 }
             }
         });
@@ -531,7 +523,7 @@ class Powerup extends Entity {
             var end   = new Vector(Math.cos(angle + center_angle) * radius, Math.sin(angle + center_angle) * radius);
             lines.push(new Line(start, end));
         }
-        super(position, lines, 0, "powerup");
+        super(position, lines, 0);
         this.power_type = power_type;
         this.colour = colour;
         this.speed  = (Math.random() * 0.1 + asteroid_move_speed) * 1.6;
@@ -550,13 +542,13 @@ class Powerup extends Entity {
     }
 }
 
-class Bullet extends Entity {
+/*class Bullet extends Entity {
     /**
      * stripped down asteroid lol
      */
-    constructor () {
+    /*constructor () {
         var rocket = entities.filter(entity => entity.constructor == Rocket)[0];
-        var circle_sides = 30;
+        var circle_sides = 15;
         var position = rocket.get_position().add(new Vector(0,-60));
         var center_angle = Math.PI  * 2 / circle_sides;
         var radius = 7.5;
@@ -567,20 +559,45 @@ class Bullet extends Entity {
             var end   = new Vector(Math.cos(angle + center_angle) * radius, Math.sin(angle + center_angle) * radius);
             lines.push(new Line(start, end));
         }
-        super(position, lines, 0, "bullet");
+        super(position, lines, 0);
         this.colour = new Colour(27, 181, 89);
-        this.speed = (Math.random() * 0.1 + asteroid_move_speed) * 0.1;
+        this.speed = (Math.random() * 0.1 + asteroid_move_speed) * 2;
         this.rotation_direction = 1;
     }
 
     update(lapse, entities) {
-        this.position.y -= lapse * this.speed; //going up
+
+        this.position.y -= (lapse * this.speed); //going up
         this.angle      += lapse * (asteroid_rotation_speed * 1.5) * this.rotate_direction;
-        this.active      = this.active && (this.position.y - 100) > canvas_size;
+        this.active      = this.active && this.position.y > 0;
         entities.forEach(entity => {
-            if (entity === this) return;
             if (entity.collision(this)) {
-                if (entity.get_type() == "asteroid") {
+                if (entity.constructor == Asteroid) {
+                    entity.shatter();
+                    this.shatter();
+                }
+            }
+        });
+        console.log("bullet active " + this.active);
+        console.log("bullet y pos " + this.position.y);
+    }
+}*/
+
+class Bullet extends Asteroid {
+    constructor() {
+        super(0, 15, new Colour(27, 181, 89))
+        var rocket = entities.filter(entity => entity.constructor == Rocket)[0];
+        this.position = rocket.get_position().add(new Vector(0,-60));
+        this.radius = 5;
+    }
+
+    update(lapse, entities) {
+        this.position.y -= lapse * this.speed;
+        this.angle      += lapse * asteroid_rotation_speed * this.rotate_direction;
+        this.active      = this.active && this.position.y > 0;
+        entities.forEach(entity => {
+            if (entity.collision(this)) {
+                if (entity.constructor == Asteroid) {
                     entity.shatter();
                     this.shatter();
                 }

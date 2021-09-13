@@ -47,7 +47,7 @@ function update(lapse) {
     particles.forEach(p => p.update(lapse));
 
     if (Math.random() < asteroid_density) {
-        entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), new Colour(255, 255, 255)));   
+        entities.push(new Asteroid(Math.random() * canvas_size, Math.floor(Math.random() * 8 + 5), new Colour(255, 255, 255)));
     }
 
     if (Math.random() < powerup_chance) {
