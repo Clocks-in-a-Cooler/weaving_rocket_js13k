@@ -380,7 +380,7 @@ class Rocket extends Entity {
         this.direction     = "left";
         this.x_speed       = 0;
         this.health        = 5;
-        rocket_gun = 50000;
+        rocket_gun = 8;
     }
 
     /**
@@ -393,7 +393,7 @@ class Rocket extends Entity {
                 this.set_colour(new Colour(255,255,255));
                 break;
             case "gun":
-                rocket_gun = 8000;
+                rocket_gun = 16;
                 break;
             case "totem":
                 rocket_totem = true;
@@ -419,7 +419,6 @@ class Rocket extends Entity {
     update(lapse, entities) {
         this.invincibility = this.invincibility <= 0 ? 0 : (this.invincibility - lapse);
         rocket_shield = rocket_shield <= 0 ? 0 : (rocket_shield - lapse);
-        rocket_gun = rocket_gun <= 0 ? 0 : (rocket_gun - lapse);
 
         if (space_bar & KEY_PRESSED) {
             zzfx(...[,,22,.08,.4,0,2,.29,-0.3,,,,.02,,,.2,,.4,.05]); //zzfx engine
@@ -481,9 +480,10 @@ class Rocket extends Entity {
             this.set_colour(new Colour(173, 255, 47));
         }
 
-        if (Math.round(rocket_gun) % 100 == 0 && rocket_gun > 0) {
+        if (frames % 120 == 0 && rocket_gun > 0) {
             fire_gun = true;
             zzfx(...[.5,,247,.02,.07,.03,1,.26,-7.9,-0.1,,,,.6,,.4,,.71,.02,.4]); //zzfx shoot
+            rocket_gun--;
         }
 
         if (this.health <= 0) {
@@ -542,53 +542,11 @@ class Powerup extends Entity {
     }
 }
 
-/*class Bullet extends Entity {
-    /**
-     * stripped down asteroid lol
-     */
-    /*constructor () {
-        var rocket = entities.filter(entity => entity.constructor == Rocket)[0];
-        var circle_sides = 15;
-        var position = rocket.get_position().add(new Vector(0,-60));
-        var center_angle = Math.PI  * 2 / circle_sides;
-        var radius = 7.5;
-        var lines = [];
-        for (var i = 0; i < circle_sides; ++i) {
-            var angle = i * center_angle;
-            var start = new Vector(Math.cos(angle) * radius, Math.sin(angle) * radius);
-            var end   = new Vector(Math.cos(angle + center_angle) * radius, Math.sin(angle + center_angle) * radius);
-            lines.push(new Line(start, end));
-        }
-        super(position, lines, 0);
-        this.colour = new Colour(27, 181, 89);
-        this.speed = (Math.random() * 0.1 + asteroid_move_speed) * 2;
-        this.rotation_direction = 1;
-    }
-
-    update(lapse, entities) {
-
-        this.position.y -= (lapse * this.speed); //going up
-        this.angle      += lapse * (asteroid_rotation_speed * 1.5) * this.rotate_direction;
-        this.active      = this.active && this.position.y > 0;
-        entities.forEach(entity => {
-            if (entity.collision(this)) {
-                if (entity.constructor == Asteroid) {
-                    entity.shatter();
-                    this.shatter();
-                }
-            }
-        });
-        console.log("bullet active " + this.active);
-        console.log("bullet y pos " + this.position.y);
-    }
-}*/
-
 class Bullet extends Asteroid {
     constructor() {
-        super(0, 15, new Colour(27, 181, 89))
+        super(0, 3, new Colour(27, 181, 89))
         var rocket = entities.filter(entity => entity.constructor == Rocket)[0];
         this.position = rocket.get_position().add(new Vector(0,-60));
-        this.radius = 5;
     }
 
     update(lapse, entities) {
